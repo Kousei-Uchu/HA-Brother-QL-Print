@@ -614,34 +614,21 @@ def get_printer_and_label(model_override: str = None):
 
 def prepare_image(img, label):
     """
-    Auto-scale + clamp for any Brother label.
+    Prepare a Brother label image for printing.
+    Assumes the image already respects the printable area/margins.
     """
-    # Find label object
     lbl_obj = next((l for l in ALL_LABELS if l.identifier == label), None)
     if lbl_obj is None:
         raise RuntimeError(f"Unsupported label: {label}")
-
-    # Endless vs die-cut
-    if lbl_obj.form_factor == FormFactor.ENDLESS:
-        target_width = lbl_obj.printable_px
-        target_height = None
-    else:
-        target_width = lbl_obj.printable_px
-        target_height = lbl_obj.printable_px_y
 
     img = img.convert("L")
 
     w, h = img.size
 
-    # Scale to correct width
-    scale = target_width / w
-    new_h = int(h * scale)
-    img = img.resize((target_width, new_h), Image.LANCZOS)
-
-    # Clamp height (2x width rule)
-    max_h = target_width * 2
-    if new_h > max_h:
-        img = img.crop((0, 0, target_width, max_h))
+    # Optional: clamp height (2x width rule)
+    max_h = w * 2
+    if h > max_h:
+        img = img.crop((0, 0, w, max_h))
 
     # Convert to 1-bit
     img = img.point(lambda x: 0 if x < 128 else 255, '1')
