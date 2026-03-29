@@ -1,0 +1,7 @@
+{
+  "name": "Filament Stock Manager",
+  "content_in_root": false,
+  "zip_release": false,
+  "render_readme": true,
+  "homeassistant": "2023.6.0"
+}
