@@ -85,7 +85,7 @@ def _do_print(template: str, fields: dict, quantity: int, label: str, model: str
 
     img = render_lbx_to_image(template, fields)
     img = prepare_image(img, label)
-    print_image(img, label=label, quantity=quantity, preview=False, model_override=model)
+    print_image(img, label=label, quantity=quantity, preview=False, printer_model=model)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
