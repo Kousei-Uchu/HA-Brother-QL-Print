@@ -2,7 +2,7 @@
   "domain": "filament_stock",
   "name": "Filament Stock Manager",
   "version": "2.0.0",
-  "documentation": "https://github.com/yourusername/filament-stock-ha",
+  "documentation": "https://github.com/Kousei-Uchu/Business-Tools-for-Home-Assistant",
   "dependencies": [],
   "codeowners": [],
   "requirements": [

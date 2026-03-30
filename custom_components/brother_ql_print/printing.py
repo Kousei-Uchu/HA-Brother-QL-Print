@@ -48,6 +48,7 @@ import argparse
 import sys
 import zipfile
 import xml.etree.ElementTree as ET
+import asyncio
 from pathlib import Path
 from brother_ql.labels import ALL_LABELS, FormFactor
 from brother_ql.raster import BrotherQLRaster
@@ -636,9 +637,6 @@ def prepare_image(img, label):
     return img
 
 from brother_ql.raster import BrotherQLRaster
-from brother_ql.backends import get_backend
-from brother_ql.devicediscovery import discover
-from brother_ql.print import print_label  # convenience function
 
 def print_image(img, label="62", quantity=1, preview=False, printer_model: str = None, backend_identifier="pyusb"):
     """
@@ -649,28 +647,60 @@ def print_image(img, label="62", quantity=1, preview=False, printer_model: str =
     if preview:
         img.show()
         return
+    
+    enqueue_print(img, label=label, quantity=quantity, model=printer_model, backend_identifier=backend_identifier)
 
-    qlr = BrotherQLRaster(printer_model)
-    instructions = convert(
-        qlr=qlr,
-        images=[img],
-        label=label,
-        rotate="auto",
-        threshold=70,
-        dither=False,
-        compress=True,
-        red=False,
-        dpi_600=False,
-        hq=True,
-        cut=True,
-    )
-    for _ in range(quantity):
-        send(
-            instructions=instructions,
-            printer_identifier=None,  # will pick first discovered
-            backend_identifier=backend_identifier,
-            blocking=True
-        )
+
+PRINT_QUEUE = []
+
+async def enqueue_print(img, label="62", quantity=1, model="QL-720NW", backend_identifier="pyusb"):
+    """Add a print job to the queue."""
+    PRINT_QUEUE.append({
+        "img": img,
+        "label": label,
+        "quantity": quantity,
+        "model": model,
+        "backend": backend_identifier,
+    })
+    await process_queue()
+
+async def process_queue():
+    """Attempt to process jobs in the queue."""
+    while PRINT_QUEUE:
+        job = PRINT_QUEUE[0]
+        try:
+            # Attempt to print
+            qlr = BrotherQLRaster(job["model"])
+            qlr.exception_on_warning = True
+            instructions = convert(
+                qlr=qlr,
+                images=[job["img"]],
+                label=job["label"],
+                rotate="auto",
+                threshold=70,
+                dither=False,
+                compress=True,
+                red=False,
+                dpi_600=False,
+                hq=True,
+                cut=True,
+            )
+
+            for i in range(job["quantity"]):
+                send(
+                    instructions=instructions,
+                    printer_identifier=None,  # will pick first discovered
+                    backend_identifier=job["backend"],
+                    blocking=True
+                )
+
+            # Success: remove job from queue
+            PRINT_QUEUE.pop(0)
+
+        except Exception as e:
+            # Printer might be asleep, wait and retry
+            print(f"Printer busy/asleep, retrying in 30s: {e}")
+            await asyncio.sleep(30)
 
 def main():
     parser = argparse.ArgumentParser(
